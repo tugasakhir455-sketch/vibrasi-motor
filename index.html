@@ -13,7 +13,7 @@
     <div class="container mx-auto px-4 py-8">
         <header class="mb-8 text-center md:text-left">
             <h1 class="text-3xl font-extrabold tracking-tight text-blue-400">MONITORING VIBRASI BEARING MOTOR</h1>
-            <p class="text-gray-400">Sistem Pemantauan Realtime & Pengunduhan Laporan</p>
+            <p class="text-gray-400">Sistem Pemantauan Realtime & Pengunduhan Laporan (Mode Adaptif)</p>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -47,21 +47,12 @@
         </div>
 
         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg">
-            <h2 class="text-xl font-bold mb-4 text-gray-200">Unduh Laporan Riwayat Vibrasi (Excel)</h2>
-            <p class="text-sm text-gray-400 mb-6">Pilih rentang waktu data laporan yang ingin diunduh berdasarkan log aktivitas alat.</p>
+            <h2 class="text-xl font-bold mb-4 text-gray-200">Unduh Laporan Laporan (Excel)</h2>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <button onclick="downloadExcel('harian')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow">
-                    📦 Data Harian
-                </button>
-                <button onclick="downloadExcel('mingguan')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow">
-                    🗓️ Data Mingguan
-                </button>
-                <button onclick="downloadExcel('bulanan')" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow">
-                    📅 Data Bulanan
-                </button>
-                <button onclick="downloadExcel('tahunan')" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow">
-                    📊 Data Tahunan
-                </button>
+                <button onclick="downloadExcel('harian')" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow">📦 Data Harian</button>
+                <button onclick="downloadExcel('mingguan')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow">🗓️ Data Mingguan</button>
+                <button onclick="downloadExcel('bulanan')" class="bg-amber-600 hover:bg-amber-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow">📅 Data Bulanan</button>
+                <button onclick="downloadExcel('tahunan')" class="bg-rose-600 hover:bg-rose-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors shadow">📊 Data Tahunan</button>
             </div>
         </div>
     </div>
@@ -70,9 +61,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // =====================================
-        // KONFIGURASI FIREBASE ANDA
-        // =====================================
         const firebaseConfig = {
             apiKey: "AIzaSyD3LlOLeNIenL2btxg9W_zX21jdKRVmbf4",
             authDomain: "dht22-b2230.firebaseapp.com",
@@ -83,21 +71,16 @@
             appId: "1:774855203635:web:6f43abc6455b67c8607c46"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-
-        // Tempat penyimpanan data lokal sementara untuk kebutuhan Export Excel
         let dataLog = JSON.parse(localStorage.getItem('vibration_logs')) || [];
 
-        // =====================================
-        // INISIALISASI CHART.JS
-        // =====================================
+        // INIT CHART
         const ctx = document.getElementById('vibrationChart').getContext('2d');
         const vibrationChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: [], // Waktu (Timestamp)
+                labels: [],
                 datasets: [
                     { label: 'Total RMS', data: [], borderColor: '#60a5fa', tension: 0.2, fill: false },
                     { label: 'Sumbu X', data: [], borderColor: '#34d399', tension: 0.2, fill: false },
@@ -105,39 +88,28 @@
                     { label: 'Sumbu Z', data: [], borderColor: '#f87171', tension: 0.2, fill: false }
                 ]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' } },
-                    y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' } }
-                },
-                plugins: {
-                    legend: { labels: { color: '#f3f4f6' } }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false }
         });
 
-        // =====================================
-        // MEMBACA DATA REALTIME DARI FIREBASE
-        // =====================================
-        // DISESUAIKAN PERSIS dengan program ESP32 Anda: "bearing_monitor/vibration"
+        // MENEMBAK PATH 'bearing_monitor/vibration' SESUAI CODE ESP32
         const bearingRef = ref(db, 'bearing_monitor/vibration');
 
         onValue(bearingRef, (snapshot) => {
             const data = snapshot.val();
+            console.log("Data diterima dari Firebase:", data); // Membantu memantau di Inspect Element browser
+            
             if (data) {
                 const now = new Date();
                 const timeString = now.toLocaleTimeString('id-ID');
 
-                // Mengambil data sesuai dengan json.set() pada ESP32 Anda
-                const totalRMS = data.total_rms !== undefined ? data.total_rms : 0;
-                const rmsX = data.rms_x !== undefined ? data.rms_x : 0; 
-                const rmsY = data.rms_y !== undefined ? data.rms_y : 0;
-                const rmsZ = data.rms_z !== undefined ? data.rms_z : 0;
-                const statusMotor = data.status || "UNKNOWN";
+                // Menggunakan toleransi pembacaan Case Sensitive (Huruf besar/kecil)
+                const totalRMS = Number(data.total_rms || data.totalRMS || data.TotalRMS || 0);
+                const rmsX = Number(data.rms_x || data.rmsAx || data.rms_X || 0);
+                const rmsY = Number(data.rms_y || data.rmsAy || data.rms_Y || 0);
+                const rmsZ = Number(data.rms_z || data.rmsAz || data.rms_Z || 0);
+                const statusMotor = data.status || data.kondisi || data.Status || "UNKNOWN";
 
-                // 1. Update UI Angka & Status Card
+                // 1. Update UI
                 document.getElementById('val-rms').innerText = totalRMS.toFixed(3);
                 document.getElementById('val-x').innerText = rmsX.toFixed(3);
                 document.getElementById('val-y').innerText = rmsY.toFixed(3);
@@ -145,17 +117,14 @@
 
                 const statusEl = document.getElementById('status-motor');
                 statusEl.innerText = statusMotor;
-                
                 statusEl.className = "text-2xl font-black mt-2 " + 
-                    (statusMotor === "NORMAL" ? "text-emerald-400" : 
-                     statusMotor === "WARNING" ? "text-amber-400" : "text-rose-500");
+                    (statusMotor === "NORMAL" ? "text-emerald-400" : statusMotor === "WARNING" ? "text-amber-400" : "text-rose-500");
 
-                // 2. Update Grafik Realtime
+                // 2. Update Chart
                 if (vibrationChart.data.labels.length > 20) {
                     vibrationChart.data.labels.shift();
-                    vibrationChart.data.datasets.forEach(dataset => dataset.data.shift());
+                    vibrationChart.data.datasets.forEach(d => d.data.shift());
                 }
-
                 vibrationChart.data.labels.push(timeString);
                 vibrationChart.data.datasets[0].data.push(totalRMS);
                 vibrationChart.data.datasets[1].data.push(rmsX);
@@ -163,54 +132,19 @@
                 vibrationChart.data.datasets[3].data.push(rmsZ);
                 vibrationChart.update();
 
-                // 3. Simpan data ke log untuk Excel
-                const record = {
-                    Waktu: now.toISOString(),
-                    Total_RMS: totalRMS,
-                    RMS_X: rmsX,
-                    RMS_Y: rmsY,
-                    RMS_Z: rmsZ,
-                    Status: statusMotor
-                };
-                dataLog.push(record);
-                if (dataLog.length > 10000) dataLog.shift();
+                // 3. Simpan Log
+                dataLog.push({ Waktu: now.toISOString(), Total_RMS: totalRMS, RMS_X: rmsX, RMS_Y: rmsY, RMS_Z: rmsZ, Status: statusMotor });
+                if (dataLog.length > 5000) dataLog.shift();
                 localStorage.setItem('vibration_logs', JSON.stringify(dataLog));
             }
         });
 
-        // =====================================
-        // FUNGSI UNDUH EXCEL
-        // =====================================
         window.downloadExcel = function(tipe) {
-            if (dataLog.length === 0) {
-                alert("Data kosong! Tunggu data realtime masuk beberapa saat sebelum mengunduh.");
-                return;
-            }
-
-            const now = new Date();
-            let filteredData = [];
-
-            if (tipe === 'harian') {
-                filteredData = dataLog.filter(d => (now - new Date(d.Waktu)) <= 24 * 60 * 60 * 1000);
-            } else if (tipe === 'mingguan') {
-                filteredData = dataLog.filter(d => (now - new Date(d.Waktu)) <= 7 * 24 * 60 * 60 * 1000);
-            } else if (tipe === 'bulanan') {
-                filteredData = dataLog.filter(d => (now - new Date(d.Waktu)) <= 30 * 24 * 60 * 60 * 1000);
-            } else if (tipe === 'tahunan') {
-                filteredData = dataLog.filter(d => (now - new Date(d.Waktu)) <= 365 * 24 * 60 * 60 * 1000);
-            }
-
-            if (filteredData.length === 0) {
-                alert(`Belum ada rekaman data untuk rentang ${tipe}.`);
-                return;
-            }
-
-            const worksheet = XLSX.utils.json_to_sheet(filteredData);
+            if (dataLog.length === 0) { alert("Data kosong!"); return; }
+            const worksheet = XLSX.utils.json_to_sheet(dataLog);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Data Vibrasi");
-
-            const dateStr = now.toISOString().slice(0,10);
-            XLSX.writeFile(workbook, `Laporan_Vibrasi_${tipe}_${dateStr}.xlsx`);
+            XLSX.writeFile(workbook, `Laporan_Vibrasi_${tipe}.xlsx`);
         };
     </script>
 </body>
